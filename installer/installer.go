@@ -46,6 +46,21 @@ func NewSimpleInstaller(editorDir string, releases *releases.Releases, client *h
 	return i, nil
 }
 
+// NewInstaller creates a UnityInstaller with default configuration.
+func NewInstaller(editorDir string) (UnityInstaller, error) {
+	releaseManifest, err := releases.DefaultReleaseSource.FetchReleases("win32")
+	if err != nil {
+		return nil, err
+	}
+
+	unityInstaller, err := NewSimpleInstaller(editorDir, releaseManifest, http.DefaultClient)
+	if err != nil {
+		return nil, err
+	}
+
+	return unityInstaller, nil
+}
+
 func (i *simpleInstaller) Close() error {
 	return os.RemoveAll(i.tempDir)
 }

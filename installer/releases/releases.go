@@ -7,6 +7,13 @@ import (
 	"sync"
 )
 
+var (
+	defaultReleasesEndpoint = "https://public-cdn.cloud.unity3d.com/hub/prod/"
+
+	// DefaultReleaseSource fetches releases from the Unity Hub endpoints.
+	DefaultReleaseSource = NewHTTPReleaseSource(http.DefaultClient, defaultReleasesEndpoint)
+)
+
 // ReleaseSource provides a means of listing released Unity versions with
 // metadata.
 type ReleaseSource interface {
