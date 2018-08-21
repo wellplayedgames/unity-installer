@@ -17,7 +17,7 @@ var (
 // ReleaseSource provides a means of listing released Unity versions with
 // metadata.
 type ReleaseSource interface {
-	FetchReleases(platform string) (*Releases, error)
+	FetchReleases(platform string, includeBeta bool) (Releases, error)
 }
 
 // InstallOptions provides the options to configure a package to install.
@@ -58,16 +58,31 @@ type EditorRelease struct {
 	Modules []ModuleRelease `json:"modules"`
 }
 
+// FindModule returns the first module with a given ID or nil.
+func (r *EditorRelease) FindModule(id string) *ModuleRelease {
+	for idx := range r.Modules {
+		m := &r.Modules[idx]
+		if m.ID == id {
+			return m
+		}
+	}
+
+	return nil
+}
+
 // Releases lists all available releases at a point in time.
-type Releases struct {
+type Releases map[string]*EditorRelease
+
+type httpReleases struct {
 	Official []EditorRelease `json:"official"`
+	Beta     []EditorRelease `json:"beta"`
 }
 
 type httpReleaseSource struct {
 	client  *http.Client
 	baseURL string
 
-	releases map[string]*Releases
+	releases map[string]*httpReleases
 	lock     sync.Mutex
 }
 
@@ -76,11 +91,11 @@ func NewHTTPReleaseSource(client *http.Client, baseURL string) ReleaseSource {
 	return &httpReleaseSource{
 		client:   client,
 		baseURL:  baseURL,
-		releases: map[string]*Releases{},
+		releases: map[string]*httpReleases{},
 	}
 }
 
-func (s *httpReleaseSource) FetchReleases(platform string) (*Releases, error) {
+func (s *httpReleaseSource) fetch(platform string) (*httpReleases, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -101,7 +116,7 @@ func (s *httpReleaseSource) FetchReleases(platform string) (*Releases, error) {
 
 	d := json.NewDecoder(resp.Body)
 
-	releases := &Releases{}
+	releases := &httpReleases{}
 	err = d.Decode(releases)
 	if err != nil {
 		return nil, err
@@ -109,4 +124,27 @@ func (s *httpReleaseSource) FetchReleases(platform string) (*Releases, error) {
 
 	s.releases[platform] = releases
 	return releases, nil
+}
+
+func (s *httpReleaseSource) FetchReleases(platform string, includeBeta bool) (Releases, error) {
+	releases, err := s.fetch(platform)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := Releases{}
+
+	for idx := range releases.Official {
+		v := &releases.Official[idx]
+		ret[v.Version] = v
+	}
+
+	if includeBeta {
+		for idx := range releases.Beta {
+			v := &releases.Beta[idx]
+			ret[v.Version] = v
+		}
+	}
+
+	return ret, nil
 }

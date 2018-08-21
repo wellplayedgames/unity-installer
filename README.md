@@ -1,2 +1,2 @@
-# unity-hub
+# unity-installer
 Go implementation of Unity Hub's downloader and installer - designed for use in continuous integration.
