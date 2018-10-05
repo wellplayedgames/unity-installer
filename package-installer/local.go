@@ -3,6 +3,7 @@ package packageinstaller
 import (
 	"archive/zip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -52,8 +53,14 @@ func (i *localInstaller) StoreModules(destination string, modules []releases.Mod
 func (i *localInstaller) InstallPackage(packagePath string, destination string, options releases.InstallOptions) error {
 	fmt.Printf("installing %s...\n", packagePath)
 
+	os.MkdirAll(destination, os.ModePerm)
+
 	if strings.HasSuffix(packagePath, ".zip") {
 		return installZip(packagePath, destination)
+	}
+
+	if strings.HasSuffix(packagePath, ".pkg") {
+		return installPkg(packagePath, destination)
 	}
 
 	return installExe(packagePath, destination, options)
@@ -106,6 +113,52 @@ func installZip(packagePath string, destination string) error {
 	return nil
 }
 
+func findPackage(dir string) (string, error) {
+	entries, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return "", err
+	}
+
+	for _, entry := range entries {
+		name := entry.Name()
+		if strings.HasSuffix(name, ".pkg.tmp") {
+			return name, nil
+		}
+	}
+
+	return "", errors.New("could not find Payload")
+}
+
+func installPkg(packagePath, destination string) error {
+	tmpPath, err := ioutil.TempDir("", "unity-installer")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmpPath)
+
+	// First, extract the package file.
+	cmd := exec.Command("/usr/bin/xar", "-xf", packagePath, "-C", tmpPath)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err = cmd.Run()
+
+	// Then extract package Payload
+	tmpPkgPath := ""
+	if err == nil {
+		tmpPkgPath, err = findPackage(tmpPath)
+	}
+
+	if err == nil {
+		payloadPath := filepath.Join(tmpPath, tmpPkgPath, "Payload")
+		cmd := exec.Command("/usr/bin/tar", "-C", destination, "-zmxf", payloadPath)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err = cmd.Run()
+	}
+
+	return err
+}
+
 func installExe(packagePath string, destination string, options releases.InstallOptions) error {
 	var args []string
 	var err error
@@ -128,16 +181,10 @@ func installExe(packagePath string, destination string, options releases.Install
 	fmt.Printf("running %s %s\n", packagePath, args)
 
 	cmd := exec.Command(packagePath, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	err = cmd.Run()
 	if err != nil {
-		out, _ := cmd.CombinedOutput()
-		errText := ""
-
-		if out != nil {
-			errText = string(out)
-		}
-
-		fmt.Fprint(os.Stderr, errText)
 		return err
 	}
 

@@ -132,11 +132,31 @@ func (i *simpleInstaller) InstallModule(packageInstaller packageinstaller.Packag
 	return err
 }
 
+func checkFileExists(path string) bool {
+	if _, err := os.Stat(path); err == nil {
+		return true
+	}
+
+	return false
+}
+
+func checkEditorDirectory(editorDir string) bool {
+	winPath := filepath.Join(editorDir, "Editor", "Unity.exe")
+	if checkFileExists(winPath) {
+		return true
+	}
+
+	macPath := filepath.Join(editorDir, "Unity", "Unity.app")
+	if checkFileExists(macPath) {
+		return true
+	}
+
+	return false
+}
+
 func (i *simpleInstaller) CheckEditorVersion(editorVersion string) (bool, []releases.ModuleRelease, error) {
 	editorDir := filepath.Join(i.editorDir, editorVersion)
-	exePath := filepath.Join(editorDir, "Editor", "Unity.exe")
-
-	if _, err := os.Stat(exePath); os.IsNotExist(err) {
+	if !checkEditorDirectory(editorDir) {
 		return false, nil, nil
 	}
 

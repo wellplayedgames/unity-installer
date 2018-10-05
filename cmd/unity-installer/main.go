@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"runtime"
 
 	"github.com/wellplayedgames/unity-installer/installer"
 	pkginstaller "github.com/wellplayedgames/unity-installer/package-installer"
@@ -28,6 +29,7 @@ var (
 			Default("C:\\Program Files\\Unity").
 			OverrideDefaultFromEnvar("UNITY_INSTALL_PATH").
 			String()
+	flagPlatform = kingpin.Flag("platform", "Unity host platform").Envar("UNITY_PLATFORM").Default(getPlatform()).String()
 
 	cmdInstall         = kingpin.Command("install", "Install a Unity version (optionally with modules)")
 	flagInstallVersion = cmdInstall.Arg("version", "Unity version to install.").Required().String()
@@ -43,9 +45,18 @@ var (
 	flagApplyExtraModules = cmdApply.Flag("module", "Extra modules to install whilst applying.").Strings()
 )
 
+func getPlatform() string {
+	switch runtime.GOOS {
+		case "windows":
+			return "win32"
+		default:
+			return runtime.GOOS
+	}
+}
+
 func getReleases() releases.Releases {
 	releaseSource := releases.NewHTTPReleaseSource(http.DefaultClient, *flagReleasesEndpoint)
-	releases, err := releaseSource.FetchReleases("win32", false)
+	releases, err := releaseSource.FetchReleases(*flagPlatform, false)
 	if err != nil {
 		panic(err)
 	}
@@ -123,6 +134,8 @@ func main() {
 			m.Selected = selectedModules[m.ID]
 			modules[idx] = m
 		}
+
+		spec.Modules = modules
 
 		var output io.Writer = os.Stdout
 
