@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"sort"
 
 	"github.com/wellplayedgames/unity-installer/installer"
 	pkginstaller "github.com/wellplayedgames/unity-installer/package-installer"
@@ -43,14 +44,16 @@ var (
 	cmdApply              = kingpin.Command("apply", "Apply a previously distilled install.")
 	flagApplyFile         = cmdApply.Arg("spec", "Spec file to apply.").Required().String()
 	flagApplyExtraModules = cmdApply.Flag("module", "Extra modules to install whilst applying.").Strings()
+
+	cmdList = kingpin.Command("list", "List available versions.")
 )
 
 func getPlatform() string {
 	switch runtime.GOOS {
-		case "windows":
-			return "win32"
-		default:
-			return runtime.GOOS
+	case "windows":
+		return "win32"
+	default:
+		return runtime.GOOS
 	}
 }
 
@@ -193,6 +196,23 @@ func main() {
 		err = installer.EnsureEditorWithModules(unityInstaller, pkgInstaller, spec, installModules)
 		if err != nil {
 			panic(err)
+		}
+
+	case cmdList.FullCommand():
+		releases := getReleases()
+
+		versions := make([]string, len(releases))
+
+		i := 0
+		for version := range releases {
+			versions[i] = version
+			i++
+		}
+
+		sort.Strings(versions)
+
+		for _, version := range versions {
+			fmt.Println(version)
 		}
 	}
 }
