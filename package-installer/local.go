@@ -51,24 +51,39 @@ func (i *localInstaller) StoreModules(destination string, modules []releases.Mod
 
 // InstallPackage installs a single Unity package.
 func (i *localInstaller) InstallPackage(packagePath string, destination string, options releases.InstallOptions) error {
+	unityPath := destination
 	fmt.Printf("installing %s...\n", packagePath)
 
 	if options.Destination != nil {
-		unityPath := destination
-		destination = strings.ReplaceAll(*options.Destination, "{UNITY_PATH}", unityPath)		
+		destination = strings.ReplaceAll(*options.Destination, "{UNITY_PATH}", unityPath)
 	}
 
 	os.MkdirAll(destination, os.ModePerm)
 
-	if strings.HasSuffix(packagePath, ".zip") {
-		return installZip(packagePath, destination)
+	err := func() error {
+		if strings.HasSuffix(packagePath, ".zip") {
+			return installZip(packagePath, destination)
+		}
+
+		if strings.HasSuffix(packagePath, ".pkg") {
+			return installPkg(packagePath, destination)
+		}
+
+		return installExe(packagePath, destination, options)
+	}()
+
+	if err == nil && options.RenameFrom != nil && options.RenameTo != nil {
+		renameFrom := strings.ReplaceAll(*options.RenameFrom, "{UNITY_PATH}", unityPath)
+		renameTo := strings.ReplaceAll(*options.RenameTo, "{UNITY_PATH}", unityPath)
+
+		fmt.Printf("moving %s to %s...\n", renameFrom, renameTo)
+		renameToDir := filepath.Dir(renameTo)
+
+		os.MkdirAll(renameToDir, os.ModePerm)
+		err = os.Rename(renameFrom, renameTo)
 	}
 
-	if strings.HasSuffix(packagePath, ".pkg") {
-		return installPkg(packagePath, destination)
-	}
-
-	return installExe(packagePath, destination, options)
+	return err
 }
 
 func installZip(packagePath string, destination string) error {

@@ -24,6 +24,11 @@ type ReleaseSource interface {
 type InstallOptions struct {
 	Command     *string `json:"cmd,omitempty"`
 	Destination *string `json:"destination,omitempty"`
+
+	// Advanced install options
+	RenameFrom *string `json:"renameFrom"`
+	RenameTo *string `json:"renameTo"`
+	Checksum       string `json:"checksum,omitempty"`
 }
 
 // Package represents a single package which will be installed as part of a
@@ -33,7 +38,6 @@ type Package struct {
 	DownloadURL    string `json:"downloadUrl"`
 	DownloadSize   int64  `json:"downloadSize"`
 	InstalledSize  int64  `json:"installedSize"`
-	Checksum       string `json:"checksum,omitempty"`
 }
 
 // ModuleRelease represents an optional Unity module tied to a specific editor
