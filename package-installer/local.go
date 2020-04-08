@@ -55,6 +55,11 @@ func (i *localInstaller) InstallPackage(packagePath string, destination string, 
 
 	os.MkdirAll(destination, os.ModePerm)
 
+	if options.Destination != nil {
+		unityPath := destination
+		destination = strings.ReplaceAll(*options.Destination, "{UNITY_PATH}", unityPath)		
+	}
+
 	if strings.HasSuffix(packagePath, ".zip") {
 		return installZip(packagePath, destination)
 	}
