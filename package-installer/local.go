@@ -81,8 +81,12 @@ func (i *localInstaller) InstallPackage(packagePath string, destination string, 
 		renameToDir := filepath.Dir(renameTo)
 		os.MkdirAll(renameToDir, os.ModePerm)
 
+		rel, err := filepath.Rel(renameTo, renameFrom)
+		rejoinName := filepath.Join(renameTo, rel)
+		fmt.Printf("REJOIN %s %s...", rel, rejoinName)
+
 		// If renameTo is a parent of renameFrom, we need some special work.
-		if rel, err := filepath.Rel(renameTo, renameFrom); err != nil && filepath.Join(renameTo, rel) == renameFrom {
+		if err != nil && rejoinName == renameFrom {
 			tmpPath := filepath.Join(renameToDir, "_tmp")
 
 			fmt.Printf("using tmp rename %s...\n", tmpPath)
@@ -129,7 +133,8 @@ func installZip(packagePath string, destination string) error {
 			return err
 		}
 
-		fw, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		mode := f.Mode() | 0666
+		fw, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
 		if err != nil {
 			return err
 		}
