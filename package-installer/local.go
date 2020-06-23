@@ -75,27 +75,37 @@ func (i *localInstaller) InstallPackage(packagePath string, destination string, 
 	if err == nil && options.RenameFrom != nil && options.RenameTo != nil {
 		renameFrom := filepath.Clean(strings.ReplaceAll(*options.RenameFrom, "{UNITY_PATH}", unityPath))
 		renameTo := filepath.Clean(strings.ReplaceAll(*options.RenameTo, "{UNITY_PATH}", unityPath))
-		
+
 		fmt.Printf("moving %s to %s...\n", renameFrom, renameTo)
 
 		renameToDir := filepath.Dir(renameTo)
 		os.MkdirAll(renameToDir, os.ModePerm)
 
-		rel, err := filepath.Rel(renameTo, renameFrom)
+		rel := ""
+		rel, err = filepath.Rel(renameTo, renameFrom)
 		rejoinName := filepath.Join(renameTo, rel)
-		fmt.Printf("REJOIN %s %s...", rel, rejoinName)
+		fmt.Printf("REJOIN %s %s...\n", rel, rejoinName)
 
 		// If renameTo is a parent of renameFrom, we need some special work.
-		if err != nil && rejoinName == renameFrom {
+		if err == nil && rejoinName == renameFrom {
 			tmpPath := filepath.Join(renameToDir, "_tmp")
 
 			fmt.Printf("using tmp rename %s...\n", tmpPath)
-			err := os.Rename(renameFrom, tmpPath)
+			err = os.Rename(renameFrom, tmpPath)
 			if err != nil {
+				fmt.Printf("Failed to rename %s -> %s\n", renameFrom, tmpPath)
 				return err
 			}
 
 			renameFrom = tmpPath
+		}
+
+		err = os.Remove(renameTo)
+		if os.IsNotExist(err) {
+			err = nil
+		} else if err != nil {
+			fmt.Printf("Failed to remove %s with error %s\n", renameTo, err)
+			return err
 		}
 
 		err = os.Rename(renameFrom, renameTo)
