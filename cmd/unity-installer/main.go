@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"gopkg.in/alecthomas/kingpin.v2"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -10,10 +11,9 @@ import (
 	"runtime"
 	"sort"
 
-	"github.com/wellplayedgames/unity-installer/installer"
-	pkginstaller "github.com/wellplayedgames/unity-installer/package-installer"
-	"github.com/wellplayedgames/unity-installer/releases"
-	"gopkg.in/alecthomas/kingpin.v2"
+	"github.com/wellplayedgames/unity-installer/pkg/installer"
+	pkginstaller "github.com/wellplayedgames/unity-installer/pkg/package-installer"
+	"github.com/wellplayedgames/unity-installer/pkg/releases"
 )
 
 const (
