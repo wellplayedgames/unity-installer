@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-logr/logr"
 	"io"
 	"os"
 	"syscall"
@@ -14,7 +15,7 @@ import (
 
 	"github.com/Microsoft/go-winio"
 	"github.com/google/uuid"
-	kingpin "gopkg.in/alecthomas/kingpin.v2"
+	"gopkg.in/alecthomas/kingpin.v2"
 
 	"github.com/wellplayedgames/unity-installer/pkg/releases"
 )
@@ -22,9 +23,6 @@ import (
 var (
 	flagServicePipeName = kingpin.Flag("pipe-name", "").Hidden().String()
 	flagPackageService  = kingpin.Flag("package-service", "").Hidden().String()
-
-	dllShlwapi       = syscall.NewLazyDLL("shlwapi.dll")
-	procPathGetArgsW = dllShlwapi.NewProc("PathGetArgsW")
 
 	dllShell32       = syscall.NewLazyDLL("shell32.dll")
 	procShellExecute = dllShell32.NewProc("ShellExecuteExW")
@@ -165,7 +163,7 @@ type serviceInstaller struct {
 	responseChannel <-chan responseMessage
 }
 
-func NewServiceInstaller() (PackageInstaller, error) {
+func NewServiceInstaller(logger logr.Logger) (PackageInstaller, error) {
 	pipeName := *flagServicePipeName
 
 	if pipeName == "" {
@@ -231,14 +229,14 @@ func NewServiceInstaller() (PackageInstaller, error) {
 	return &serviceInstaller{reqCh, respCh}, nil
 }
 
-func MaybeHandleService() {
+func MaybeHandleService(logger logr.Logger) {
 	if *flagPackageService == "" {
 		return
 	}
 
 	defer os.Exit(0)
 
-	inst := NewLocalInstaller()
+	inst := NewLocalInstaller(logger)
 
 	c, err := winio.DialPipe(*flagPackageService, nil)
 	if err != nil {
@@ -282,12 +280,15 @@ func MaybeHandleService() {
 		}
 	}()
 
-	takeMutex("Global\\UnityInstaller")
+	if err := takeMutex("Global\\UnityInstaller"); err != nil {
+		panic(err)
+	}
+
 	handleInstaller(inst, reqCh, respCh)
 }
 
-func NewDefaultInstaller() (PackageInstaller, error) {
-	return NewServiceInstaller()
+func NewDefaultInstaller(logger logr.Logger) (PackageInstaller, error) {
+	return NewServiceInstaller(logger)
 }
 
 func (i *serviceInstaller) Close() error {
@@ -363,12 +364,12 @@ func handleInstaller(inst PackageInstaller, requestChannel <-chan installerMessa
 }
 
 func takeMutex(name string) error {
-	ret, _, err := procCreateMutex.Call(
-		0,
-		1,
-		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(name))),
-	)
+	namePtr, err := syscall.UTF16PtrFromString(name)
+	if err != nil {
+		return err
+	}
 
+	ret, _, err := procCreateMutex.Call(0, 1, uintptr(unsafe.Pointer(namePtr)))
 	h := syscall.Handle(ret)
 
 	switch err {

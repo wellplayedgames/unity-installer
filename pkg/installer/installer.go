@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-logr/logr"
 	"io"
 	"net/http"
 	"os"
@@ -25,6 +26,7 @@ type UnityInstaller interface {
 }
 
 type simpleInstaller struct {
+	logger     logr.Logger
 	httpClient *http.Client
 	editorDir  string
 	tempDir    string
@@ -32,8 +34,8 @@ type simpleInstaller struct {
 
 // NewSimpleInstaller creates a Unity Installer which downloads packages to a
 // temporary directory every install.
-func NewSimpleInstaller(editorDir, tempDir string, client *http.Client) (UnityInstaller, error) {
-	i := &simpleInstaller{client, editorDir, tempDir}
+func NewSimpleInstaller(logger logr.Logger, editorDir, tempDir string, client *http.Client) (UnityInstaller, error) {
+	i := &simpleInstaller{logger, client, editorDir, tempDir}
 	return i, nil
 }
 
@@ -42,16 +44,20 @@ func (i *simpleInstaller) Close() error {
 }
 
 func (i *simpleInstaller) downloadPackage(pkg *releases.Package) (string, error) {
-	fmt.Printf("downloading %s...\n", pkg.DownloadURL)
+	i.logger.Info("downloading package", "package", pkg.DownloadURL)
 
-	_, fname := path.Split(pkg.DownloadURL)
-	targetPath := filepath.Join(i.tempDir, fname)
+	_, fileName := path.Split(pkg.DownloadURL)
+	targetPath := filepath.Join(i.tempDir, fileName)
 
 	resp, err := i.httpClient.Get(pkg.DownloadURL)
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			i.logger.Error(err, "failed to close download body")
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("error fetching package: %d", resp.StatusCode)
@@ -61,7 +67,11 @@ func (i *simpleInstaller) downloadPackage(pkg *releases.Package) (string, error)
 	if err != nil {
 		return "", err
 	}
-	defer target.Close()
+	defer func() {
+		if err := target.Close(); err != nil {
+			i.logger.Error(err, "failed to close target file")
+		}
+	}()
 
 	_, err = io.Copy(target, resp.Body)
 	return targetPath, err
@@ -166,11 +176,14 @@ func (i *simpleInstaller) CheckEditorVersion(editorVersion string) (bool, []rele
 		return true, nil, nil
 	}
 
-	defer file.Close()
-
+	defer func() {
+		if err := file.Close(); err != nil {
+			i.logger.Error(err, "failed to close editor metadata")
+		}
+	}()
 	d := json.NewDecoder(file)
 
-	modules := []releases.ModuleRelease{}
+	var modules []releases.ModuleRelease
 	err = d.Decode(&modules)
 	if err != nil {
 		return true, nil, err

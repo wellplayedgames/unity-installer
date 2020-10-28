@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/go-logr/logr"
 	shellquote "github.com/kballard/go-shellquote"
 	"github.com/wellplayedgames/unity-installer/pkg/releases"
 )
@@ -29,10 +30,12 @@ type PackageInstaller interface {
 	StoreModules(destination string, modules []releases.ModuleRelease) error
 }
 
-type localInstaller struct{}
+type localInstaller struct{
+	logger logr.Logger
+}
 
-func NewLocalInstaller() PackageInstaller {
-	return &localInstaller{}
+func NewLocalInstaller(logger logr.Logger) PackageInstaller {
+	return &localInstaller{logger}
 }
 
 func (i *localInstaller) Close() error {
@@ -52,34 +55,36 @@ func (i *localInstaller) StoreModules(destination string, modules []releases.Mod
 // InstallPackage installs a single Unity package.
 func (i *localInstaller) InstallPackage(packagePath string, destination string, options releases.InstallOptions) error {
 	unityPath := destination
-	fmt.Printf("installing %s...\n", packagePath)
+	i.logger.Info("Installing package", "packagePath", packagePath)
 
 	if options.Destination != nil {
 		destination = filepath.Clean(strings.ReplaceAll(*options.Destination, "{UNITY_PATH}", unityPath))
 	}
 
-	os.MkdirAll(destination, os.ModePerm)
+	if err := os.MkdirAll(destination, os.ModePerm); err != nil {
+		return fmt.Errorf("failed to create destination: %w", err)
+	}
 
 	err := func() error {
 		if strings.HasSuffix(packagePath, ".zip") {
-			return installZip(packagePath, destination)
+			return i.installZip(packagePath, destination)
 		}
 
 		if strings.HasSuffix(packagePath, ".pkg") {
-			return installPkg(packagePath, destination)
+			return i.installPkg(packagePath, destination)
 		}
 
-		return installExe(packagePath, destination, options)
+		return i.installExe(packagePath, destination, options)
 	}()
 
 	if err == nil && options.RenameFrom != nil && options.RenameTo != nil {
 		renameFrom := filepath.Clean(strings.ReplaceAll(*options.RenameFrom, "{UNITY_PATH}", unityPath))
 		renameTo := filepath.Clean(strings.ReplaceAll(*options.RenameTo, "{UNITY_PATH}", unityPath))
 
-		fmt.Printf("moving %s to %s...\n", renameFrom, renameTo)
-
 		renameToDir := filepath.Dir(renameTo)
-		os.MkdirAll(renameToDir, os.ModePerm)
+		if err := os.MkdirAll(renameToDir, os.ModePerm); err != nil {
+
+		}
 
 		rel := ""
 		rel, err = filepath.Rel(renameTo, renameFrom)
@@ -100,8 +105,7 @@ func (i *localInstaller) InstallPackage(packagePath string, destination string, 
 		if os.IsNotExist(err) {
 			err = nil
 		} else if err != nil {
-			fmt.Printf("Failed to remove %s with error %s\n", renameTo, err)
-			return err
+			return fmt.Errorf("failed to remove %s: %w", renameTo, err)
 		}
 
 		err = os.Rename(renameFrom, renameTo)
@@ -110,12 +114,16 @@ func (i *localInstaller) InstallPackage(packagePath string, destination string, 
 	return err
 }
 
-func installZip(packagePath string, destination string) error {
+func (i *localInstaller) installZip(packagePath string, destination string) error {
 	r, err := zip.OpenReader(packagePath)
 	if err != nil {
 		return err
 	}
-	defer r.Close()
+	defer func() {
+		if err := r.Close(); err != nil {
+			i.logger.Error(err, "failed to close archive")
+		}
+	}()
 
 	for _, f := range r.File {
 		fr, err := f.Open()
@@ -146,7 +154,11 @@ func installZip(packagePath string, destination string) error {
 		}
 
 		err = func() error {
-			defer fw.Close()
+			defer func() {
+				if err := fw.Close(); err != nil {
+					i.logger.Error(err, "failed to close archive")
+				}
+			}()
 			_, err := io.Copy(fw, fr)
 			return err
 		}()
@@ -158,7 +170,7 @@ func installZip(packagePath string, destination string) error {
 	return nil
 }
 
-func findPackage(dir string) (string, error) {
+func (i *localInstaller) findPackage(dir string) (string, error) {
 	entries, err := ioutil.ReadDir(dir)
 	if err != nil {
 		return "", err
@@ -174,12 +186,16 @@ func findPackage(dir string) (string, error) {
 	return "", errors.New("could not find Payload")
 }
 
-func installPkg(packagePath, destination string) error {
+func (i *localInstaller) installPkg(packagePath, destination string) error {
 	tmpPath, err := ioutil.TempDir("", "unity-installer")
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmpPath)
+	defer func() {
+		if err := os.RemoveAll(tmpPath); err != nil {
+			i.logger.Error(err, "failed to delete temporary directory")
+		}
+	}()
 
 	// First, extract the package file.
 	cmd := exec.Command("/usr/bin/xar", "-xf", packagePath, "-C", tmpPath)
@@ -190,7 +206,7 @@ func installPkg(packagePath, destination string) error {
 	// Then extract package Payload
 	tmpPkgPath := ""
 	if err == nil {
-		tmpPkgPath, err = findPackage(tmpPath)
+		tmpPkgPath, err = i.findPackage(tmpPath)
 	}
 
 	if err == nil {
@@ -204,7 +220,7 @@ func installPkg(packagePath, destination string) error {
 	return err
 }
 
-func installExe(packagePath string, destination string, options releases.InstallOptions) error {
+func (i *localInstaller) installExe(packagePath string, destination string, options releases.InstallOptions) error {
 	var args []string
 	var err error
 

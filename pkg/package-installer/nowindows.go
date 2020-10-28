@@ -2,8 +2,8 @@
 
 package packageinstaller
 
-func NewDefaultInstaller() (PackageInstaller, error) {
-	return &localInstaller{}, nil
+func NewDefaultInstaller(logger logr.Logger) (PackageInstaller, error) {
+	return NewLocalInstaller(logger), nil
 }
 
 func MaybeHandleService() {}

@@ -3,32 +3,29 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/go-logr/logr"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"runtime"
 	"sort"
 
+	"github.com/go-logr/stdr"
 	"github.com/wellplayedgames/unity-installer/pkg/installer"
 	pkginstaller "github.com/wellplayedgames/unity-installer/pkg/package-installer"
 	"github.com/wellplayedgames/unity-installer/pkg/releases"
 )
 
-const (
-	defaultReleasesEndpoint = "https://public-cdn.cloud.unity3d.com/hub/prod/"
-	globalMutexName         = "Global\\UnityInstaller"
-)
-
 var (
 	flagReleasesEndpoint = kingpin.Flag("releases-endpoint", "Endpoint to fetch Unity releases from.").
-				Default(defaultReleasesEndpoint).
-				OverrideDefaultFromEnvar("UNTIY_RELEASES_ENDPOINT").
+				Envar("UNTIY_RELEASES_ENDPOINT").
 				String()
 	flagEditorDir = kingpin.Flag("install-path", "Directory to install Unity editors to.").
 			Default("C:\\Program Files\\Unity").
-			OverrideDefaultFromEnvar("UNITY_INSTALL_PATH").
+			Envar("UNITY_INSTALL_PATH").
 			String()
 	flagPlatform = kingpin.Flag("platform", "Unity host platform").Envar("UNITY_PLATFORM").Default(getPlatform()).String()
 
@@ -58,18 +55,23 @@ func getPlatform() string {
 }
 
 func getReleases() releases.Releases {
-	releaseSource := releases.NewHTTPReleaseSource(http.DefaultClient, *flagReleasesEndpoint)
-	releases, err := releaseSource.FetchReleases(*flagPlatform, false)
+	releaseSource := releases.DefaultReleaseSource
+
+	if *flagReleasesEndpoint != "" {
+		releaseSource = releases.NewHTTPReleaseSource(http.DefaultClient, *flagReleasesEndpoint)
+	}
+
+	downloadedReleases, err := releaseSource.FetchReleases(*flagPlatform, false)
 	if err != nil {
 		panic(err)
 	}
 
-	return releases
+	return downloadedReleases
 }
 
 func lookupTargetRelease(editorVersion string) *releases.EditorRelease {
-	releases := getReleases()
-	editorRelease, ok := releases[editorVersion]
+	downloadedReleases := getReleases()
+	editorRelease, ok := downloadedReleases[editorVersion]
 	if !ok {
 		panic(fmt.Errorf("no such editor version %s", editorVersion))
 	}
@@ -77,8 +79,8 @@ func lookupTargetRelease(editorVersion string) *releases.EditorRelease {
 	return editorRelease
 }
 
-func newPackageInstaller() pkginstaller.PackageInstaller {
-	pkgInstall, err := pkginstaller.NewDefaultInstaller()
+func newPackageInstaller(logger logr.Logger) pkginstaller.PackageInstaller {
+	pkgInstall, err := pkginstaller.NewDefaultInstaller(logger.WithName("installer"))
 	if err != nil {
 		panic(err)
 	}
@@ -88,20 +90,28 @@ func newPackageInstaller() pkginstaller.PackageInstaller {
 
 func main() {
 	cmd := kingpin.Parse()
-
-	pkginstaller.MaybeHandleService()
+	logger := stdr.New(log.New(os.Stderr, "", log.LstdFlags))
+	pkginstaller.MaybeHandleService(logger.WithName("service"))
 
 	tempDir, err := ioutil.TempDir("", "UnityInstaller")
 	if err != nil {
 		panic(err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		if err := os.RemoveAll(tempDir); err != nil {
+			logger.Error(err, "failed to remove temporary directory")
+		}
+	}()
 
-	unityInstaller, err := installer.NewSimpleInstaller(*flagEditorDir, tempDir, http.DefaultClient)
+	unityInstaller, err := installer.NewSimpleInstaller(logger.WithName("simple-installer"), *flagEditorDir, tempDir, http.DefaultClient)
 	if err != nil {
 		panic(err)
 	}
-	defer unityInstaller.Close()
+	defer func() {
+		if err := unityInstaller.Close(); err != nil {
+			logger.Error(err, "failed to shutdown unity installer")
+		}
+	}()
 
 	switch cmd {
 	case cmdInstall.FullCommand():
@@ -111,8 +121,12 @@ func main() {
 			return
 		}
 
-		pkgInstaller := newPackageInstaller()
-		defer pkgInstaller.Close()
+		pkgInstaller := newPackageInstaller(logger)
+		defer func() {
+			if err := pkgInstaller.Close(); err != nil {
+				logger.Error(err, "failed to shutdown package installer")
+			}
+		}()
 
 		editorRelease := lookupTargetRelease(*flagInstallVersion)
 		err = installer.EnsureEditorWithModules(unityInstaller, pkgInstaller, editorRelease, *flagInstallModules)
@@ -147,7 +161,11 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			defer f.Close()
+			defer func() {
+				if err := f.Close(); err != nil {
+					logger.Error(err, "failed to close distil output")
+				}
+			}()
 			output = f
 		}
 
@@ -165,7 +183,11 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		defer f.Close()
+		defer func() {
+			if err := f.Close(); err != nil {
+				logger.Error(err, "failed to close apply source")
+			}
+		}()
 
 		d := json.NewDecoder(f)
 		err = d.Decode(spec)
@@ -173,7 +195,7 @@ func main() {
 			panic(err)
 		}
 
-		installModules := []string{}
+		var installModules []string
 		for idx := range spec.Modules {
 			m := &spec.Modules[idx]
 			if m.Selected {
@@ -190,8 +212,12 @@ func main() {
 			return
 		}
 
-		pkgInstaller := newPackageInstaller()
-		defer pkgInstaller.Close()
+		pkgInstaller := newPackageInstaller(logger)
+		defer func() {
+			if err := pkgInstaller.Close(); err != nil {
+				logger.Error(err, "failed to shutdown package installer")
+			}
+		}()
 
 		err = installer.EnsureEditorWithModules(unityInstaller, pkgInstaller, spec, installModules)
 		if err != nil {
@@ -199,12 +225,12 @@ func main() {
 		}
 
 	case cmdList.FullCommand():
-		releases := getReleases()
+		latestReleases := getReleases()
 
-		versions := make([]string, len(releases))
+		versions := make([]string, len(latestReleases))
 
 		i := 0
-		for version := range releases {
+		for version := range latestReleases {
 			versions[i] = version
 			i++
 		}
