@@ -47,8 +47,6 @@ func parseArchive(c *http.Client, archiveURL, platform string) (*EditorRelease, 
 	}
 
 	baseURL, _ := path.Split(archiveURL)
-	baseURL = baseURL + "/"
-
 	modules := map[string]*archiveModule{}
 	for _, section := range meta.Sections() {
 		var module archiveModule
@@ -80,7 +78,7 @@ func parseArchive(c *http.Client, archiveURL, platform string) (*EditorRelease, 
 func hydratePackage(baseURL string, dest *Package, src *archiveModule) {
 	url := src.URL
 	if !strings.Contains(url, "://") {
-		url = baseURL + url
+		url = joinSlash(baseURL, url)
 	}
 
 	dest.Command = src.Command

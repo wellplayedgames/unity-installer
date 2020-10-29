@@ -1,53 +1,45 @@
 package editor
 
 import (
-	"regexp"
 	"strings"
 )
 
-var (
-	versionRegex = regexp.MustCompile(`^([0-9]+)(([.abf])([0-9]+))*$`)
+const (
+	versionSplitChars = ".abf"
 )
 
 // CompareVersions compares two Unity editor versions.
 func CompareVersions(a, b string) int {
-	aMatch := versionRegex.FindAllStringSubmatch(a, -1)
-	bMatch := versionRegex.FindAllStringSubmatch(b, -1)
+	for {
+		idxA := strings.IndexAny(a, versionSplitChars)
+		idxB := strings.IndexAny(b, versionSplitChars)
 
-	if (aMatch == nil) != (bMatch != nil) {
-		if bMatch != nil {
-			return 1
-		}
-		return -1
-	}
-
-	if aMatch == nil {
-		return 0
-	}
-
-	if c := strings.Compare(aMatch[1][0], bMatch[1][0]); c != 0 {
-		return c
-	}
-
-	aLen := len(aMatch[2])
-	bLen := len(bMatch[2])
-	if c := aLen - bLen; c != 0 {
-		return c
-	}
-
-	for idx := 0; idx < aLen; idx += 1 {
-		aSep := aMatch[3][idx]
-		bSep := bMatch[3][idx]
-		if c := strings.Compare(aSep, bSep); c != 0 {
-			return c
+		if (idxA > 0) != (idxB > 0) {
+			if idxA > 0 {
+				return 1
+			}
+			return -1
 		}
 
-		aPart := aMatch[4][idx]
-		bPart := bMatch[4][idx]
+		if idxA < 0 {
+			break
+		}
+
+		aPart := a[:idxA]
+		bPart := b[:idxB]
+		aSep := int(a[idxA])
+		bSep := int(b[idxB])
+		a = a[idxA+1:]
+		b = b[idxB+1:]
+
 		if c := strings.Compare(aPart, bPart); c != 0 {
 			return c
 		}
+
+		if c := aSep - bSep; c != 0 {
+			return c
+		}
 	}
 
-	return 0
+	return strings.Compare(a, b)
 }

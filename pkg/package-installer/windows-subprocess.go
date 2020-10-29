@@ -10,20 +10,20 @@ import (
 	"github.com/go-logr/logr"
 	"io"
 	"os"
+	"strings"
 	"syscall"
 	"unsafe"
 
 	"github.com/Microsoft/go-winio"
 	"github.com/google/uuid"
-	"gopkg.in/alecthomas/kingpin.v2"
-
 	"github.com/wellplayedgames/unity-installer/pkg/release"
 )
 
-var (
-	flagServicePipeName = kingpin.Flag("pipe-name", "").Hidden().String()
-	flagPackageService  = kingpin.Flag("package-service", "").Hidden().String()
+const (
+	serviceFlag = "--package-service="
+)
 
+var (
 	dllShell32       = syscall.NewLazyDLL("shell32.dll")
 	procShellExecute = dllShell32.NewProc("ShellExecuteExW")
 
@@ -164,11 +164,7 @@ type serviceInstaller struct {
 }
 
 func NewServiceInstaller(logger logr.Logger) (PackageInstaller, error) {
-	pipeName := *flagServicePipeName
-
-	if pipeName == "" {
-		pipeName = fmt.Sprintf("\\\\.\\pipe\\UnityInstaller-%s", uuid.New().String())
-	}
+	pipeName := fmt.Sprintf("\\\\.\\pipe\\UnityInstaller-%s", uuid.New().String())
 
 	l, err := winio.ListenPipe(pipeName, nil)
 	if err != nil {
@@ -179,14 +175,12 @@ func NewServiceInstaller(logger logr.Logger) (PackageInstaller, error) {
 	tmpCh := make(chan interface{})
 	respCh := make(chan responseMessage)
 
-	if *flagServicePipeName == "" {
-		go func() {
-			err := runService(pipeName)
-			if err != nil {
-				fmt.Printf("error: %v\n", err)
-			}
-		}()
-	}
+	go func() {
+		err := runService(pipeName)
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+		}
+	}()
 
 	c, err := l.Accept()
 	if err != nil {
@@ -230,17 +224,20 @@ func NewServiceInstaller(logger logr.Logger) (PackageInstaller, error) {
 }
 
 func MaybeHandleService(logger logr.Logger) {
-	if *flagPackageService == "" {
+	arg := os.Args[1]
+	if !strings.HasPrefix(arg, serviceFlag) {
 		return
 	}
-
 	defer os.Exit(0)
 
+	logger.Info("starting installer service")
+	pipeName := arg[len(serviceFlag):]
 	inst := NewLocalInstaller(logger)
 
-	c, err := winio.DialPipe(*flagPackageService, nil)
+	c, err := winio.DialPipe(pipeName, nil)
 	if err != nil {
-		panic(err)
+		logger.Error(err, "failed to connect to service pipe", "pipe", pipeName)
+		os.Exit(1)
 	}
 
 	reqCh := make(chan installerMessage)
@@ -281,7 +278,8 @@ func MaybeHandleService(logger logr.Logger) {
 	}()
 
 	if err := takeMutex("Global\\UnityInstaller"); err != nil {
-		panic(err)
+		logger.Error(err, "failed to acquire mutex")
+		os.Exit(1)
 	}
 
 	handleInstaller(inst, reqCh, respCh)
@@ -395,7 +393,7 @@ func runService(pipeName string) error {
 		return err
 	}
 
-	cmdLine := fmt.Sprintf("install X \"--package-service=%s\"", pipeName)
+	cmdLine := fmt.Sprintf("\"%s%s\"", serviceFlag, pipeName)
 	err = shellExecute("runas", exe, cmdLine)
 	return err
 }

@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	projectVersionPath = filepath.Join("ProjectSettings", "ProjectVersion.txt")
+	projectVersionPath   = filepath.Join("ProjectSettings", "ProjectVersion.txt")
 	editorRevisionRegexp = regexp.MustCompile(`^([0-9a-z.]+)\s*\(([A-Fa-f0-9]+)\)$`)
 )
 

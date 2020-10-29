@@ -5,7 +5,7 @@ import (
 	"sort"
 )
 
-type list struct {}
+type list struct{}
 
 func (l *list) Run(ctx commandContext) error {
 	latestReleases, err := ctx.releaseSource.FetchReleases(CLI.Platform, true)

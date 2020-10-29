@@ -9,7 +9,7 @@ type versionSelector struct {
 	ForProject string   `help:"Path to Unity project to match version for"`
 	Version    string   `help:"Unity version to install"`
 	Revision   string   `help:"Unity revision to install"`
-	Modules    []string `help:"Extra modules to install (can be repeated to specify multiple modules)"`
+	Modules    []string `name:"module" help:"Extra modules to install (can be repeated to specify multiple modules)"`
 }
 
 func (s *versionSelector) VersionAndRevision() (string, string, error) {

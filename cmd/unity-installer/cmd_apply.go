@@ -9,7 +9,7 @@ import (
 
 type apply struct {
 	Spec    string   `required arg help:"Spec file to apply"`
-	Modules []string `help:"Extra modules to install whilst applying"`
+	Modules []string `name:"module" help:"Extra modules to install whilst applying"`
 	Force   bool     `help:"Reinstall Unity"`
 }
 

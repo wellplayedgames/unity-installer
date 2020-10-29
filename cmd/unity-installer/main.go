@@ -30,7 +30,7 @@ var CLI struct {
 	ArchiveEndpoint  string `help:"Endpoint to fetch archived Unity releases from" env:"UNITY_ARCHIVE_ENDPOINT"`
 
 	InstallPath string `help:"Directory to install Unity editors into" env:"UNITY_INSTALL_PATH" default:"C:\\Program Files\\Unity"`
-	Platform    string `help:"Unity host platform" env:"UNITY_PLATFORM"`
+	Platform    string `help:"Unity host platform" env:"UNITY_PLATFORM" default:"${default_platform}"`
 
 	Install install `cmd help:"Install a Unity version (optionally with modules)"`
 	Distill distill `cmd help:"Create an install spec to install later"`
@@ -79,8 +79,9 @@ func main() {
 	logger := stdr.New(log.New(os.Stderr, "", log.LstdFlags))
 	pkginstaller.MaybeHandleService(logger.WithName("service"))
 
-	CLI.Platform = getPlatform()
-	args := kong.Parse(&CLI)
+	args := kong.Parse(&CLI, kong.Vars{
+		"default_platform": getPlatform(),
+	})
 
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	defer cancelCtx()
@@ -117,6 +118,7 @@ func main() {
 
 	cmdCtx := commandContext{
 		ctx:           ctx,
+		logger:        logger,
 		releaseSource: getReleaseSource(),
 		installer:     unityInstaller,
 	}
