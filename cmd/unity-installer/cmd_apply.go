@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/wellplayedgames/unity-installer/pkg/installer"
 	"github.com/wellplayedgames/unity-installer/pkg/release"
 	"os"
@@ -17,7 +18,7 @@ func (a *apply) Run(ctx commandContext) error {
 	spec := &release.EditorRelease{}
 	f, err := os.Open(a.Spec)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to open spec: %w", err)
 	}
 	defer func() {
 		if err := f.Close(); err != nil {
@@ -28,7 +29,7 @@ func (a *apply) Run(ctx commandContext) error {
 	d := json.NewDecoder(f)
 	err = d.Decode(spec)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to decode spec: %w", err)
 	}
 
 	var installModules []string

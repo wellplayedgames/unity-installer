@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/wellplayedgames/unity-installer/pkg/release"
 	"io"
 	"os"
@@ -44,7 +45,7 @@ func (d *distill) Run(ctx commandContext) error {
 	if d.Output != "" {
 		f, err := os.Create(d.Output)
 		if err != nil {
-			panic(err)
+			return fmt.Errorf("failed to create output: %w", err)
 		}
 		defer func() {
 			if err := f.Close(); err != nil {
