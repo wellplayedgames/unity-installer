@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	packageinstaller "github.com/wellplayedgames/unity-installer/pkg/package-installer"
-	"github.com/wellplayedgames/unity-installer/pkg/releases"
+	"github.com/wellplayedgames/unity-installer/pkg/release"
 )
 
 // HasEditorAndModules returns true if the given editor version and all given module IDs are installed.
@@ -14,7 +14,7 @@ func HasEditorAndModules(installer UnityInstaller, editorVersion string, moduleI
 		return false, err
 	}
 
-	existingModMap := map[string]*releases.ModuleRelease{}
+	existingModMap := map[string]*release.ModuleRelease{}
 
 	for idx := range existingModules {
 		m := &existingModules[idx]
@@ -35,15 +35,17 @@ func HasEditorAndModules(installer UnityInstaller, editorVersion string, moduleI
 func EnsureEditorWithModules(
 	unityInstaller UnityInstaller,
 	packageInstaller packageinstaller.PackageInstaller,
-	editorRelease *releases.EditorRelease,
-	moduleIDs []string) error {
+	editorRelease *release.EditorRelease,
+	moduleIDs []string,
+	force bool,
+	) error {
 
 	hasEditor, existingModules, err := unityInstaller.CheckEditorVersion(editorRelease.Version)
 	if err != nil {
 		return err
 	}
 
-	if !hasEditor {
+	if force || !hasEditor {
 		err = unityInstaller.InstallEditor(packageInstaller, editorRelease)
 		if err != nil {
 			return err
@@ -59,7 +61,7 @@ func EnsureEditorWithModules(
 		}
 	}
 
-	availableModMap := map[string]*releases.ModuleRelease{}
+	availableModMap := map[string]*release.ModuleRelease{}
 
 	for idx := range editorRelease.Modules {
 		m := &editorRelease.Modules[idx]
@@ -67,7 +69,7 @@ func EnsureEditorWithModules(
 	}
 
 	for _, moduleID := range moduleIDs {
-		if existingModSet[moduleID] {
+		if !force && existingModSet[moduleID] {
 			continue
 		}
 

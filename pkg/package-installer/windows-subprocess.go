@@ -17,7 +17,7 @@ import (
 	"github.com/google/uuid"
 	"gopkg.in/alecthomas/kingpin.v2"
 
-	"github.com/wellplayedgames/unity-installer/pkg/releases"
+	"github.com/wellplayedgames/unity-installer/pkg/release"
 )
 
 var (
@@ -93,10 +93,10 @@ func shellExecute(verb, file, params string) error {
 }
 
 type installerMessage struct {
-	PackagePath string                   `json:"packagePath"`
-	Destination string                   `json:"destination"`
-	Modules     []releases.ModuleRelease `json:"modules"`
-	Options     releases.InstallOptions  `json:",inline"`
+	PackagePath string                  `json:"packagePath"`
+	Destination string                  `json:"destination"`
+	Modules     []release.ModuleRelease `json:"modules"`
+	Options     release.InstallOptions  `json:",inline"`
 }
 
 type responseMessage struct {
@@ -297,9 +297,9 @@ func (i *serviceInstaller) Close() error {
 }
 
 // InstallPackage installs a single Unity package.
-func (i *serviceInstaller) StoreModules(destination string, modules []releases.ModuleRelease) error {
+func (i *serviceInstaller) StoreModules(destination string, modules []release.ModuleRelease) error {
 	if modules == nil {
-		modules = []releases.ModuleRelease{}
+		modules = []release.ModuleRelease{}
 	}
 
 	req := installerMessage{
@@ -320,7 +320,7 @@ func (i *serviceInstaller) StoreModules(destination string, modules []releases.M
 }
 
 // InstallPackage installs a single Unity package.
-func (i *serviceInstaller) InstallPackage(packagePath string, destination string, options releases.InstallOptions) error {
+func (i *serviceInstaller) InstallPackage(packagePath string, destination string, options release.InstallOptions) error {
 	fmt.Printf("installing %s...\n", packagePath)
 
 	req := installerMessage{

@@ -14,7 +14,7 @@ import (
 
 	"github.com/go-logr/logr"
 	shellquote "github.com/kballard/go-shellquote"
-	"github.com/wellplayedgames/unity-installer/pkg/releases"
+	"github.com/wellplayedgames/unity-installer/pkg/release"
 )
 
 const (
@@ -26,8 +26,8 @@ const (
 type PackageInstaller interface {
 	io.Closer
 
-	InstallPackage(packagePath string, destination string, options releases.InstallOptions) error
-	StoreModules(destination string, modules []releases.ModuleRelease) error
+	InstallPackage(packagePath string, destination string, options release.InstallOptions) error
+	StoreModules(destination string, modules []release.ModuleRelease) error
 }
 
 type localInstaller struct{
@@ -42,7 +42,7 @@ func (i *localInstaller) Close() error {
 	return nil
 }
 
-func (i *localInstaller) StoreModules(destination string, modules []releases.ModuleRelease) error {
+func (i *localInstaller) StoreModules(destination string, modules []release.ModuleRelease) error {
 	path := filepath.Join(destination, ModulesFile)
 	b, err := json.MarshalIndent(&modules, "", "  ")
 	if err != nil {
@@ -53,7 +53,7 @@ func (i *localInstaller) StoreModules(destination string, modules []releases.Mod
 }
 
 // InstallPackage installs a single Unity package.
-func (i *localInstaller) InstallPackage(packagePath string, destination string, options releases.InstallOptions) error {
+func (i *localInstaller) InstallPackage(packagePath string, destination string, options release.InstallOptions) error {
 	unityPath := destination
 	i.logger.Info("Installing package", "packagePath", packagePath)
 
@@ -220,7 +220,7 @@ func (i *localInstaller) installPkg(packagePath, destination string) error {
 	return err
 }
 
-func (i *localInstaller) installExe(packagePath string, destination string, options releases.InstallOptions) error {
+func (i *localInstaller) installExe(packagePath string, destination string, options release.InstallOptions) error {
 	var args []string
 	var err error
 

@@ -12,17 +12,17 @@ import (
 	"path/filepath"
 
 	packageinstaller "github.com/wellplayedgames/unity-installer/pkg/package-installer"
-	"github.com/wellplayedgames/unity-installer/pkg/releases"
+	"github.com/wellplayedgames/unity-installer/pkg/release"
 )
 
 // UnityInstaller represents a Unity Installer which can install editors and editor modules.
 type UnityInstaller interface {
 	io.Closer
 
-	InstallEditor(installer packageinstaller.PackageInstaller, spec *releases.EditorRelease) error
-	InstallModule(installer packageinstaller.PackageInstaller, editorVersion string, spec *releases.ModuleRelease) error
+	InstallEditor(installer packageinstaller.PackageInstaller, spec *release.EditorRelease) error
+	InstallModule(installer packageinstaller.PackageInstaller, editorVersion string, spec *release.ModuleRelease) error
 
-	CheckEditorVersion(editorVersion string) (bool, []releases.ModuleRelease, error)
+	CheckEditorVersion(editorVersion string) (bool, []release.ModuleRelease, error)
 }
 
 type simpleInstaller struct {
@@ -43,7 +43,7 @@ func (i *simpleInstaller) Close() error {
 	return nil
 }
 
-func (i *simpleInstaller) downloadPackage(pkg *releases.Package) (string, error) {
+func (i *simpleInstaller) downloadPackage(pkg *release.Package) (string, error) {
 	i.logger.Info("downloading package", "package", pkg.DownloadURL)
 
 	_, fileName := path.Split(pkg.DownloadURL)
@@ -77,18 +77,18 @@ func (i *simpleInstaller) downloadPackage(pkg *releases.Package) (string, error)
 	return targetPath, err
 }
 
-func (i *simpleInstaller) InstallEditor(packageInstaller packageinstaller.PackageInstaller, spec *releases.EditorRelease) error {
+func (i *simpleInstaller) InstallEditor(packageInstaller packageinstaller.PackageInstaller, spec *release.EditorRelease) error {
 	targetPath := filepath.Join(i.editorDir, spec.Version)
 
 	packagePath, err := i.downloadPackage(&spec.Package)
 	if err == nil {
-		err = packageInstaller.InstallPackage(packagePath, targetPath, releases.InstallOptions{
+		err = packageInstaller.InstallPackage(packagePath, targetPath, release.InstallOptions{
 			Destination: &targetPath,
 		})
 	}
 
 	if err == nil {
-		mods := make([]releases.ModuleRelease, len(spec.Modules))
+		mods := make([]release.ModuleRelease, len(spec.Modules))
 
 		for idx, mod := range spec.Modules {
 			mod.Selected = false
@@ -101,7 +101,7 @@ func (i *simpleInstaller) InstallEditor(packageInstaller packageinstaller.Packag
 	return err
 }
 
-func (i *simpleInstaller) InstallModule(packageInstaller packageinstaller.PackageInstaller, editorVersion string, spec *releases.ModuleRelease) error {
+func (i *simpleInstaller) InstallModule(packageInstaller packageinstaller.PackageInstaller, editorVersion string, spec *release.ModuleRelease) error {
 	hasEditor, existingModules, err := i.CheckEditorVersion(editorVersion)
 	if err != nil {
 		return err
@@ -120,7 +120,7 @@ func (i *simpleInstaller) InstallModule(packageInstaller packageinstaller.Packag
 
 	// Update modules
 	if err == nil {
-		modMap := map[string]releases.ModuleRelease{}
+		modMap := map[string]release.ModuleRelease{}
 
 		for _, mod := range existingModules {
 			modMap[mod.ID] = mod
@@ -130,7 +130,7 @@ func (i *simpleInstaller) InstallModule(packageInstaller packageinstaller.Packag
 		thisMod.Selected = true
 		modMap[spec.ID] = thisMod
 
-		mods := make([]releases.ModuleRelease, 0, len(modMap))
+		mods := make([]release.ModuleRelease, 0, len(modMap))
 
 		for _, v := range modMap {
 			mods = append(mods, v)
@@ -164,7 +164,7 @@ func checkEditorDirectory(editorDir string) bool {
 	return false
 }
 
-func (i *simpleInstaller) CheckEditorVersion(editorVersion string) (bool, []releases.ModuleRelease, error) {
+func (i *simpleInstaller) CheckEditorVersion(editorVersion string) (bool, []release.ModuleRelease, error) {
 	editorDir := filepath.Join(i.editorDir, editorVersion)
 	if !checkEditorDirectory(editorDir) {
 		return false, nil, nil
@@ -183,7 +183,7 @@ func (i *simpleInstaller) CheckEditorVersion(editorVersion string) (bool, []rele
 	}()
 	d := json.NewDecoder(file)
 
-	var modules []releases.ModuleRelease
+	var modules []release.ModuleRelease
 	err = d.Decode(&modules)
 	if err != nil {
 		return true, nil, err
