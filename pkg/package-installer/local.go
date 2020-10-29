@@ -83,7 +83,7 @@ func (i *localInstaller) InstallPackage(packagePath string, destination string, 
 
 		renameToDir := filepath.Dir(renameTo)
 		if err := os.MkdirAll(renameToDir, os.ModePerm); err != nil {
-
+			return fmt.Errorf("failed to make target directory: %w", err)
 		}
 
 		rel := ""
