@@ -164,7 +164,7 @@ type serviceInstaller struct {
 }
 
 func NewServiceInstaller(logger logr.Logger) (PackageInstaller, error) {
-	pipeName := fmt.Sprintf("\\\\.\\pipe\\UnityInstaller-%s", uuid.New().String())
+	pipeName := fmt.Sprintf(`\\.\pipe\UnityInstaller-%s`, uuid.New().String())
 
 	l, err := winio.ListenPipe(pipeName, nil)
 	if err != nil {

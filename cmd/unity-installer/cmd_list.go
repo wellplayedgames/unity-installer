@@ -13,11 +13,9 @@ func (l *list) Run(ctx commandContext) error {
 		return err
 	}
 
-	versions := make([]string, len(latestReleases))
-	i := 0
+	versions := make([]string, 0, len(latestReleases))
 	for version := range latestReleases {
-		versions[i] = version
-		i++
+		versions = append(versions, version)
 	}
 
 	sort.Strings(versions)

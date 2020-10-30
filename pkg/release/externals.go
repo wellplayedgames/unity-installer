@@ -22,7 +22,7 @@ func editorDataPath(platform, s string) *string {
 		out = fmt.Sprintf("%s%s", prefix, s)
 	}
 
-	return stringPtr(out)
+	return &out
 }
 
 func moduleDestination(platform, name, ext string) *string {
