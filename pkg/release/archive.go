@@ -72,6 +72,7 @@ func parseArchive(c *http.Client, archiveURL, platform string) (*EditorRelease, 
 		release.Modules = append(release.Modules, dest)
 	}
 
+	generateAndroidModules(&release, platform)
 	return &release, nil
 }
 
