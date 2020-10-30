@@ -201,7 +201,7 @@ func generateAndroidModules(release *EditorRelease, platform string) {
 	}
 	modules = append(modules, ModuleRelease{
 		ID:   "android-ndk",
-		Name: fmt.Sprint("Android NDK %s", ndkVersion),
+		Name: fmt.Sprintf("Android NDK %s", ndkVersion),
 		Package: Package{
 			InstallOptions: InstallOptions{
 				RenameFrom: editorDataPath(platform, fmt.Sprintf("PlaybackEngines/AndroidPlayer/NDK/android-ndk-r%s", ndkVersion)),
