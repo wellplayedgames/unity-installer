@@ -2,6 +2,7 @@ package release
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"path"
 	"path/filepath"
@@ -35,6 +36,11 @@ func fetchIni(c *http.Client, url string) (*ini.File, error) {
 			err = cerr
 		}
 	}()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := ioutil.ReadAll(resp.Body)
+		return nil, fmt.Errorf("bad status %d fetching %s: %s", resp.StatusCode, url, string(bodyBytes))
+	}
 
 	file, err := ini.Load(resp.Body)
 	return file, err
