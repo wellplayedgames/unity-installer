@@ -124,5 +124,6 @@ func main() {
 	}
 	if err := args.Run(cmdCtx); err != nil {
 		logger.Error(err, "failed to run command")
+		os.Exit(1)
 	}
 }
