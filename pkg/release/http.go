@@ -67,6 +67,8 @@ func (s *HTTPReleaseSource) fetchSpecificRelease(baseURL, platform, version, rev
 	suffix := platform
 	if platform == "win32" {
 		suffix = "win"
+	} else if platform == "darwin" {
+		suffix = "osx"
 	}
 
 	url := joinSlash(baseURL, fmt.Sprintf("%s/unity-%s-%s.ini", revision, version, suffix))
