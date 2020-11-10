@@ -224,6 +224,10 @@ func NewServiceInstaller(logger logr.Logger) (PackageInstaller, error) {
 }
 
 func MaybeHandleService(logger logr.Logger) {
+	if len(os.Args) < 2 {
+		return
+	}
+
 	arg := os.Args[1]
 	if !strings.HasPrefix(arg, serviceFlag) {
 		return
