@@ -26,6 +26,8 @@ func editorDataPath(platform, s string) *string {
 }
 
 func moduleDestination(platform, name, ext string) *string {
+	isZip := strings.ToLower(ext) == ".zip"
+
 	switch name {
 	case "mono":
 		fallthrough
@@ -34,7 +36,7 @@ func moduleDestination(platform, name, ext string) *string {
 	case "monodevelop":
 		return stringPtr("{UNITY_PATH}")
 	case "documentation":
-		if ext == "zip" {
+		if isZip {
 			return editorDataPath(platform, "")
 		}
 		return stringPtr("{UNITY_PATH}")
@@ -51,12 +53,12 @@ func moduleDestination(platform, name, ext string) *string {
 	case "android":
 		return editorDataPath(platform, "PlaybackEngines/AndroidPlayer")
 	case "android-sdk-build-tools":
-		if ext == "zip" {
+		if isZip {
 			return editorDataPath(platform, "PlaybackEngines/AndroidPlayer/SDK/build-tools")
 		}
 		return editorDataPath(platform, "PlaybackEngines/AndroidPlayer/SDK")
 	case "android-sdk-platforms":
-		if ext == "zip" {
+		if isZip {
 			return editorDataPath(platform, "PlaybackEngines/AndroidPlayer/SDK/platforms")
 		}
 		return editorDataPath(platform, "PlaybackEngines/AndroidPlayer/SDK")
