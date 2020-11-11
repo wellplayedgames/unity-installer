@@ -30,6 +30,48 @@ type PackageInstaller interface {
 	StoreModules(destination string, modules []release.ModuleRelease) error
 }
 
+func mergeDirectory(src, dest string) error {
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	entries, err := ioutil.ReadDir(src)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		entrySrc := filepath.Join(src, entry.Name())
+		entryDest := filepath.Join(dest, entry.Name())
+
+		destInfo, err := os.Stat(entryDest)
+		if err == nil && destInfo.IsDir() && srcInfo.IsDir() {
+			// Already an existing directory, merge.
+			if err := mergeDirectory(entrySrc, entryDest); err != nil {
+				return err
+			}
+		} else if err != nil && !os.IsNotExist(err) {
+			// An error other than 'not exists' occurred.
+			return err
+		} else {
+			// Either non-existent or not a directory, just rename
+			if err := os.Rename(entrySrc, entryDest); err != nil {
+				return err
+			}
+		}
+	}
+
+	err = os.Remove(src)
+	if err == nil || os.IsExist(err) {
+		return nil
+	} else if os.IsExist(err) {
+		return nil
+	}
+
+	return fmt.Errorf("failed to remove %s: %w", src, err)
+}
+
 type localInstaller struct{
 	logger logr.Logger
 }
@@ -81,34 +123,29 @@ func (i *localInstaller) InstallPackage(packagePath string, destination string, 
 		renameFrom := filepath.Clean(strings.ReplaceAll(*options.RenameFrom, "{UNITY_PATH}", unityPath))
 		renameTo := filepath.Clean(strings.ReplaceAll(*options.RenameTo, "{UNITY_PATH}", unityPath))
 
+		statFrom, err := os.Stat(renameFrom)
+		if err != nil {
+			return fmt.Errorf("cannot access renameFrom: %w", err)
+		}
+
+		_, err = os.Stat(renameTo)
+		destNotExist := os.IsNotExist(err)
+		if _, err := os.Stat(renameTo); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("cannot access renameTo: %w", err)
+		}
+
 		renameToDir := filepath.Dir(renameTo)
 		if err := os.MkdirAll(renameToDir, os.ModePerm); err != nil {
 			return fmt.Errorf("failed to make target directory: %w", err)
 		}
 
-		rel := ""
-		rel, err = filepath.Rel(renameTo, renameFrom)
-		rejoinName := filepath.Join(renameTo, rel)
-
-		// If renameTo is a parent of renameFrom, we need some special work.
-		if err == nil && rejoinName == renameFrom {
-			tmpPath := filepath.Join(renameToDir, "_tmp")
-			err = os.Rename(renameFrom, tmpPath)
-			if err != nil {
-				return err
-			}
-
-			renameFrom = tmpPath
+		if !statFrom.IsDir() || destNotExist {
+			i.logger.Info("Renaming", "from", renameFrom, "to", renameTo)
+			err = os.Rename(renameFrom, renameTo)
+		} else {
+			i.logger.Info("Merging directories", "from", renameFrom, "to", renameTo)
+			err = mergeDirectory(renameFrom, renameTo)
 		}
-
-		err = os.Remove(renameTo)
-		if os.IsNotExist(err) {
-			err = nil
-		} else if err != nil {
-			return fmt.Errorf("failed to remove %s: %w", renameTo, err)
-		}
-
-		err = os.Rename(renameFrom, renameTo)
 	}
 
 	return err
