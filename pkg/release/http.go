@@ -72,7 +72,14 @@ func (s *HTTPReleaseSource) fetchSpecificRelease(baseURL, platform, version, rev
 	}
 
 	url := joinSlash(baseURL, fmt.Sprintf("%s/unity-%s-%s.ini", revision, version, suffix))
-	return parseArchive(s.HTTPClient, url, platform)
+	editorRelease, err := parseArchive(s.HTTPClient, url, platform)
+	if err != nil {
+		return nil, err
+	}
+
+	// This has to be set to have install path be correct.
+	editorRelease.Version = version
+	return editorRelease, nil
 }
 
 // FetchReleases implements the Source interface.
