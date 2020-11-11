@@ -19,7 +19,7 @@ import (
 type UnityInstaller interface {
 	io.Closer
 
-	InstallEditor(installer packageinstaller.PackageInstaller, spec *release.EditorRelease) error
+	InstallEditor(platform string, installer packageinstaller.PackageInstaller, spec *release.EditorRelease) error
 	InstallModule(installer packageinstaller.PackageInstaller, editorVersion string, spec *release.ModuleRelease) error
 
 	CheckEditorVersion(editorVersion string) (bool, []release.ModuleRelease, error)
@@ -77,14 +77,23 @@ func (i *simpleInstaller) downloadPackage(pkg *release.Package) (string, error) 
 	return targetPath, err
 }
 
-func (i *simpleInstaller) InstallEditor(packageInstaller packageinstaller.PackageInstaller, spec *release.EditorRelease) error {
+func (i *simpleInstaller) InstallEditor(platform string, packageInstaller packageinstaller.PackageInstaller, spec *release.EditorRelease) error {
 	targetPath := filepath.Join(i.editorDir, spec.Version)
 
 	packagePath, err := i.downloadPackage(&spec.Package)
 	if err == nil {
-		err = packageInstaller.InstallPackage(packagePath, targetPath, release.InstallOptions{
+		installOptions := release.InstallOptions{
 			Destination: &targetPath,
-		})
+		}
+
+		if platform == "darwin" {
+			renameFrom := "{UNITY_PATH}/Unity"
+			renameTo := "{UNITY_PATH}"
+			installOptions.RenameFrom = &renameFrom
+			installOptions.RenameTo = &renameTo
+		}
+
+		err = packageInstaller.InstallPackage(packagePath, targetPath, installOptions)
 	}
 
 	if err == nil {

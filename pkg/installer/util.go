@@ -47,14 +47,7 @@ func EnsureEditorWithModules(
 	}
 
 	if force || !hasEditor {
-		if platform == "darwin" {
-			renameFrom := "{UNITY_PATH}/Unity"
-			renameTo := "{UNITY_PATH}"
-			editorRelease.RenameFrom = &renameFrom
-			editorRelease.RenameTo = &renameTo
-		}
-
-		err = unityInstaller.InstallEditor(packageInstaller, editorRelease)
+		err = unityInstaller.InstallEditor(platform, packageInstaller, editorRelease)
 		if err != nil {
 			return err
 		}
