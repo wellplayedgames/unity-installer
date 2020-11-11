@@ -33,6 +33,7 @@ func HasEditorAndModules(installer UnityInstaller, editorVersion string, moduleI
 
 // EnsureEditorWithModules installs (if missing) an editor version and list of modules.
 func EnsureEditorWithModules(
+	platform string,
 	unityInstaller UnityInstaller,
 	packageInstaller packageinstaller.PackageInstaller,
 	editorRelease *release.EditorRelease,
@@ -46,6 +47,13 @@ func EnsureEditorWithModules(
 	}
 
 	if force || !hasEditor {
+		if platform == "darwin" {
+			renameFrom := "{UNITY_PATH}/Unity"
+			renameTo := "{UNITY_PATH}"
+			editorRelease.RenameFrom = &renameFrom
+			editorRelease.RenameTo = &renameTo
+		}
+
 		err = unityInstaller.InstallEditor(packageInstaller, editorRelease)
 		if err != nil {
 			return err

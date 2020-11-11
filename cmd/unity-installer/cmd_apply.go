@@ -57,5 +57,5 @@ func (a *apply) Run(ctx commandContext) error {
 		}
 	}()
 
-	return installer.EnsureEditorWithModules(ctx.installer, pkgInstaller, spec, installModules, a.Force)
+	return installer.EnsureEditorWithModules(CLI.Platform, ctx.installer, pkgInstaller, spec, installModules, a.Force)
 }
