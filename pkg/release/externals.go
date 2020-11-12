@@ -200,7 +200,7 @@ func generateAndroidModules(release *EditorRelease, platform string) {
 
 	// Add NDK.
 	ndkVersion := "16b"
-	if editor.CompareVersions(editorVersion, "20201.1.0a1") > 0 {
+	if editor.CompareVersions(editorVersion, "2021.1.0a1") > 0 {
 		ndkVersion = "21d"
 	} else if editor.CompareVersions(editorVersion, "2019.3.0a4") > 0 {
 		ndkVersion = "19"

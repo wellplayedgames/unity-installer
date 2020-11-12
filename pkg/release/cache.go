@@ -43,7 +43,7 @@ func (c *Cache) FetchReleases(platform string, includeBeta bool) (Releases, erro
 
 // FetchRelease implements the Source interface.
 func (c *Cache) FetchRelease(platform, version, revision string) (*EditorRelease, error) {
-	key := fmt.Sprint("%s@%s", version, revision)
+	key := fmt.Sprintf("%s@%s", version, revision)
 
 	c.lock.Lock()
 	defer c.lock.Unlock()

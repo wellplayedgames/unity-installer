@@ -1,6 +1,8 @@
 package editor
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -32,7 +34,17 @@ func CompareVersions(a, b string) int {
 		a = a[idxA+1:]
 		b = b[idxB+1:]
 
-		if c := strings.Compare(aPart, bPart); c != 0 {
+		aNum, err := strconv.Atoi(aPart)
+		if err != nil {
+			panic(fmt.Errorf("invalid version %s: %w", a, err))
+		}
+
+		bNum, err := strconv.Atoi(bPart)
+		if err != nil {
+			panic(fmt.Errorf("invalid version %s: %w", b, err))
+		}
+
+		if c := aNum - bNum; c != 0 {
 			return c
 		}
 
