@@ -145,7 +145,7 @@ func generateAndroidModules(release *EditorRelease, platform string) {
 	if editor.CompareVersions(editorVersion, "2019.4.9f1") > 0 {
 		modules = append(modules, ModuleRelease{
 			ID:   "android-sdk-platforms",
-			Name: "Android SDK Platforms 28",
+			Name: "Android SDK Platforms 29",
 			Package: Package{
 				InstallOptions: InstallOptions{
 					RenameFrom: editorDataPath(platform, "PlaybackEngines/AndroidPlayer/SDK/platforms/android-10"),
@@ -191,6 +191,10 @@ func generateAndroidModules(release *EditorRelease, platform string) {
 		Package: Package{
 			DownloadURL: fmt.Sprintf("https://dl.google.com/android/repository/build-tools_r28.0.3-%s.zip", host),
 			Version:     "28.0.3",
+			InstallOptions: InstallOptions{
+				RenameFrom: editorDataPath(platform, "PlaybackEngines/AndroidPlayer/SDK/build-tools/android-9"),
+				RenameTo:   editorDataPath(platform, "PlaybackEngines/AndroidPlayer/SDK/build-tools/28.0.3"),
+			},
 		},
 	})
 
