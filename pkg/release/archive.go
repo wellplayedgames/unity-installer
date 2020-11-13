@@ -46,7 +46,7 @@ func fetchIni(c *http.Client, url string) (*ini.File, error) {
 	return file, err
 }
 
-func parseArchive(c *http.Client, archiveURL, platform string) (*EditorRelease, error) {
+func parseArchive(c *http.Client, archiveURL, platform, version string) (*EditorRelease, error) {
 	meta, err := fetchIni(c, archiveURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download archive metadata: %w", err)
@@ -70,6 +70,7 @@ func parseArchive(c *http.Client, archiveURL, platform string) (*EditorRelease, 
 	delete(modules, editorModuleName)
 
 	var release EditorRelease
+	release.Version = version
 	hydratePackage(baseURL, &release.Package, editorModule)
 
 	for moduleName, src := range modules {
