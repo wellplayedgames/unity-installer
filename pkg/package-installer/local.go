@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	shellquote "github.com/kballard/go-shellquote"
@@ -97,6 +98,7 @@ func (i *localInstaller) StoreModules(destination string, modules []release.Modu
 // InstallPackage installs a single Unity package.
 func (i *localInstaller) InstallPackage(packagePath string, destination string, options release.InstallOptions) error {
 	unityPath := destination
+	startTime := time.Now()
 	i.logger.Info("Installing package", "packagePath", packagePath)
 
 	if options.Destination != nil {
@@ -119,7 +121,11 @@ func (i *localInstaller) InstallPackage(packagePath string, destination string, 
 		return i.installExe(packagePath, destination, options)
 	}()
 
-	if err == nil && options.RenameFrom != nil && options.RenameTo != nil {
+	if err != nil {
+		return err
+	}
+
+	if options.RenameFrom != nil && options.RenameTo != nil {
 		renameFrom := filepath.Clean(strings.ReplaceAll(*options.RenameFrom, "{UNITY_PATH}", unityPath))
 		renameTo := filepath.Clean(strings.ReplaceAll(*options.RenameTo, "{UNITY_PATH}", unityPath))
 
@@ -140,15 +146,22 @@ func (i *localInstaller) InstallPackage(packagePath string, destination string, 
 		}
 
 		if !statFrom.IsDir() || destNotExist {
-			i.logger.Info("Renaming", "from", renameFrom, "to", renameTo)
+			i.logger.Info("renaming", "from", renameFrom, "to", renameTo)
 			err = os.Rename(renameFrom, renameTo)
 		} else {
-			i.logger.Info("Merging directories", "from", renameFrom, "to", renameTo)
+			i.logger.Info("merging directories", "from", renameFrom, "to", renameTo)
 			err = mergeDirectory(renameFrom, renameTo)
+		}
+
+		if err != nil {
+			return err
 		}
 	}
 
-	return err
+	endTime := time.Now()
+	delta := endTime.Sub(startTime).String()
+	i.logger.Info("installed package", "packagePath", packagePath, "duration", delta)
+	return nil
 }
 
 func (i *localInstaller) installZip(packagePath string, destination string) error {

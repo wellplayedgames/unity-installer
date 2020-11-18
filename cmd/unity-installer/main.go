@@ -92,7 +92,7 @@ func main() {
 		<-signals
 		cancelCtx()
 		<-signals
-		logger.Info("Double ctrl-c, exiting immediately")
+		logger.Info("double ctrl-c, exiting immediately")
 		os.Exit(1)
 	}()
 
