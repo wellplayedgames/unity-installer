@@ -165,7 +165,7 @@ func checkEditorDirectory(editorDir string) bool {
 		return true
 	}
 
-	macPath := filepath.Join(editorDir, "Unity", "Unity.app")
+	macPath := filepath.Join(editorDir, "Unity.app")
 	if checkFileExists(macPath) {
 		return true
 	}
