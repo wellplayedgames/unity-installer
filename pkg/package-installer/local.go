@@ -276,6 +276,7 @@ func (i *localInstaller) installExe(packagePath string, destination string, opti
 
 	if options.Command != nil {
 		cmdString := strings.Replace(*options.Command, "{INSTDIR}", destination, -1)
+		cmdString = strings.Replace(cmdString, "{MODULEDIR}", destination, -1)
 		args, err = shellquote.Split(cmdString)
 		if err != nil {
 			return err
