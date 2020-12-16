@@ -7,6 +7,12 @@ import (
 	"strings"
 )
 
+var ignoreModuleCommand = map[string]bool {
+	"monodevelop": true,
+	"mono": true,
+	"facebookgameroom": true,
+}
+
 func stringPtr(s string) *string {
 	return &s
 }
@@ -23,6 +29,22 @@ func editorDataPath(platform, s string) *string {
 	}
 
 	return &out
+}
+
+func moduleCommand(name string, src *archiveModule) *string {
+	if ignoreModuleCommand[name] {
+		return nil
+	}
+
+	if strings.HasPrefix(name, "visualstudio") {
+		return nil
+	}
+
+	if src.Command != nil && *src.Command != "/S /D={INSTDIR}" {
+		return src.Command
+	}
+
+	return nil
 }
 
 func moduleDestination(platform, name, ext string) *string {

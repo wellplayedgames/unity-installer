@@ -71,7 +71,7 @@ func parseArchive(c *http.Client, archiveURL, platform, version string) (*Editor
 
 	var release EditorRelease
 	release.Version = version
-	hydratePackage(baseURL, &release.Package, editorModule)
+	hydratePackage(baseURL, &release.Package, editorModuleName, editorModule)
 
 	for moduleName, src := range modules {
 		var dest ModuleRelease
@@ -83,19 +83,19 @@ func parseArchive(c *http.Client, archiveURL, platform, version string) (*Editor
 	return &release, nil
 }
 
-func hydratePackage(baseURL string, dest *Package, src *archiveModule) {
+func hydratePackage(baseURL string, dest *Package, moduleName string, src *archiveModule) {
 	url := src.URL
 	if !strings.Contains(url, "://") {
 		url = joinSlash(baseURL, url)
 	}
 
-	dest.Command = src.Command
+	dest.Command = moduleCommand(strings.ToLower(moduleName), src)
 	dest.Checksum = src.MD5
 	dest.DownloadURL = url
 }
 
 func hydrateArchiveModule(platform, baseURL string, dest *ModuleRelease, moduleName string, src *archiveModule) {
-	hydratePackage(baseURL, &dest.Package, src)
+	hydratePackage(baseURL, &dest.Package, moduleName, src)
 
 	lowerName := strings.ToLower(moduleName)
 	ext := filepath.Ext(src.URL)
@@ -104,3 +104,4 @@ func hydrateArchiveModule(platform, baseURL string, dest *ModuleRelease, moduleN
 	dest.Description = src.Description
 	dest.Destination = moduleDestination(platform, lowerName, ext)
 }
+
