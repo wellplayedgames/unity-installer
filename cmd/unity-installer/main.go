@@ -32,6 +32,8 @@ var CLI struct {
 	InstallPath string `help:"Directory to install Unity editors into" env:"UNITY_INSTALL_PATH" default:"C:\\Program Files\\Unity"`
 	Platform    string `help:"Unity host platform" env:"UNITY_PLATFORM" default:"${default_platform}"`
 
+	DryRun bool `help:"Don't actually install anything when requested, just print what would have been run." env:"DRY_RUN"`
+
 	Install install `cmd help:"Install a Unity version (optionally with modules)"`
 	Distill distill `cmd help:"Create an install spec to install later"`
 	Apply   apply   `cmd help:"Apply a previously distilled install spec"`
@@ -67,7 +69,7 @@ func (c commandContext) LookupTargetRelease(version, revision string) (*release.
 }
 
 func newPackageInstaller(logger logr.Logger) pkginstaller.PackageInstaller {
-	pkgInstall, err := pkginstaller.NewDefaultInstaller(logger.WithName("installer"))
+	pkgInstall, err := pkginstaller.NewDefaultInstaller(logger.WithName("installer"), CLI.DryRun)
 	if err != nil {
 		panic(err)
 	}

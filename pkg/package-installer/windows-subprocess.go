@@ -163,7 +163,7 @@ type serviceInstaller struct {
 	responseChannel <-chan responseMessage
 }
 
-func NewServiceInstaller(logger logr.Logger) (PackageInstaller, error) {
+func NewServiceInstaller(logger logr.Logger, dryRun bool) (PackageInstaller, error) {
 	pipeName := fmt.Sprintf(`\\.\pipe\UnityInstaller-%s`, uuid.New().String())
 
 	l, err := winio.ListenPipe(pipeName, nil)
@@ -176,7 +176,7 @@ func NewServiceInstaller(logger logr.Logger) (PackageInstaller, error) {
 	respCh := make(chan responseMessage)
 
 	go func() {
-		err := runService(pipeName)
+		err := runService(pipeName, dryRun)
 		if err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
@@ -236,7 +236,8 @@ func MaybeHandleService(logger logr.Logger) {
 
 	logger.Info("starting installer service")
 	pipeName := arg[len(serviceFlag):]
-	inst := NewLocalInstaller(logger)
+	dryRun := len(os.Args) >= 3 && os.Args[2] == "--dry-run"
+	inst := NewLocalInstaller(logger, dryRun)
 
 	c, err := winio.DialPipe(pipeName, nil)
 	if err != nil {
@@ -289,8 +290,8 @@ func MaybeHandleService(logger logr.Logger) {
 	handleInstaller(inst, reqCh, respCh)
 }
 
-func NewDefaultInstaller(logger logr.Logger) (PackageInstaller, error) {
-	return NewServiceInstaller(logger)
+func NewDefaultInstaller(logger logr.Logger, dryRun bool) (PackageInstaller, error) {
+	return NewServiceInstaller(logger, dryRun)
 }
 
 func (i *serviceInstaller) Close() error {
@@ -391,13 +392,18 @@ func takeMutex(name string) error {
 	}
 }
 
-func runService(pipeName string) error {
+func runService(pipeName string, dryRun bool) error {
 	exe, err := os.Executable()
 	if err != nil {
 		return err
 	}
 
-	cmdLine := fmt.Sprintf("\"%s%s\"", serviceFlag, pipeName)
+	extra := ""
+	if dryRun {
+		extra = " --dry-run"
+	}
+
+	cmdLine := fmt.Sprintf("\"%s%s\"%s", serviceFlag, pipeName, extra)
 	err = shellExecute("runas", exe, cmdLine)
 	return err
 }

@@ -75,10 +75,11 @@ func mergeDirectory(src, dest string) error {
 
 type localInstaller struct{
 	logger logr.Logger
+	dryRun bool
 }
 
-func NewLocalInstaller(logger logr.Logger) PackageInstaller {
-	return &localInstaller{logger}
+func NewLocalInstaller(logger logr.Logger, dryRun bool) PackageInstaller {
+	return &localInstaller{logger, dryRun}
 }
 
 func (i *localInstaller) Close() error {
@@ -105,8 +106,10 @@ func (i *localInstaller) InstallPackage(packagePath string, destination string, 
 		destination = filepath.Clean(strings.ReplaceAll(*options.Destination, "{UNITY_PATH}", unityPath))
 	}
 
-	if err := os.MkdirAll(destination, os.ModePerm); err != nil {
-		return fmt.Errorf("failed to create destination: %w", err)
+	if !i.dryRun {
+		if err := os.MkdirAll(destination, os.ModePerm); err != nil {
+			return fmt.Errorf("failed to create destination: %w", err)
+		}
 	}
 
 	err := func() error {
@@ -125,7 +128,7 @@ func (i *localInstaller) InstallPackage(packagePath string, destination string, 
 		return err
 	}
 
-	if options.RenameFrom != nil && options.RenameTo != nil {
+	if !i.dryRun && options.RenameFrom != nil && options.RenameTo != nil {
 		renameFrom := filepath.Clean(strings.ReplaceAll(*options.RenameFrom, "{UNITY_PATH}", unityPath))
 		renameTo := filepath.Clean(strings.ReplaceAll(*options.RenameTo, "{UNITY_PATH}", unityPath))
 
@@ -165,6 +168,13 @@ func (i *localInstaller) InstallPackage(packagePath string, destination string, 
 }
 
 func (i *localInstaller) installZip(packagePath string, destination string) error {
+	if i.dryRun {
+		i.logger.Info("Dry run, extract zip",
+			"packagePath", packagePath,
+			"destination", destination)
+		return nil
+	}
+
 	r, err := zip.OpenReader(packagePath)
 	if err != nil {
 		return err
@@ -237,6 +247,13 @@ func (i *localInstaller) findPackage(dir string) (string, error) {
 }
 
 func (i *localInstaller) installPkg(packagePath, destination string) error {
+	if i.dryRun {
+		i.logger.Info("Dry run, install Mac pkg",
+			"packagePath", packagePath,
+			"destination", destination)
+		return nil
+	}
+
 	tmpPath, err := ioutil.TempDir("", "unity-installer")
 	if err != nil {
 		return err
@@ -287,6 +304,13 @@ func (i *localInstaller) installExe(packagePath string, destination string, opti
 			destPath := strings.Replace(*options.Destination, "{UNITY_PATH}", destination, -1)
 			args = append(args, fmt.Sprintf("/D=%s", destPath))
 		}
+	}
+
+	if i.dryRun {
+		i.logger.Info("Dry run, install exe",
+			"packagePath", packagePath,
+			"args", shellquote.Join(args...))
+		return nil
 	}
 
 	cmd := exec.Command(packagePath, args...)

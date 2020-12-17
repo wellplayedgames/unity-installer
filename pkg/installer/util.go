@@ -39,6 +39,7 @@ func EnsureEditorWithModules(
 	editorRelease *release.EditorRelease,
 	moduleIDs []string,
 	force bool,
+	skipEditor bool,
 	) error {
 
 	hasEditor, existingModules, err := unityInstaller.CheckEditorVersion(editorRelease.Version)
@@ -46,7 +47,7 @@ func EnsureEditorWithModules(
 		return err
 	}
 
-	if force || !hasEditor {
+	if !skipEditor && (force || !hasEditor) {
 		err = unityInstaller.InstallEditor(platform, packageInstaller, editorRelease)
 		if err != nil {
 			return err

@@ -28,7 +28,8 @@ func (s *versionSelector) VersionAndRevision() (string, string, error) {
 
 type install struct {
 	versionSelector
-	Force bool `help:"Reinstall Unity"`
+	Force      bool `help:"Reinstall Unity"`
+	SkipEditor bool `help:"If true, don't install the editor'"`
 }
 
 func (i *install) Run(ctx commandContext) error {
@@ -55,5 +56,5 @@ func (i *install) Run(ctx commandContext) error {
 		return err
 	}
 
-	return installer.EnsureEditorWithModules(CLI.Platform, ctx.installer, pkgInstaller, editorRelease, i.Modules, i.Force)
+	return installer.EnsureEditorWithModules(CLI.Platform, ctx.installer, pkgInstaller, editorRelease, i.Modules, i.Force, i.SkipEditor)
 }

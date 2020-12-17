@@ -2,7 +2,6 @@ package installer
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/go-logr/logr"
 	"io"
@@ -111,13 +110,9 @@ func (i *simpleInstaller) InstallEditor(platform string, packageInstaller packag
 }
 
 func (i *simpleInstaller) InstallModule(packageInstaller packageinstaller.PackageInstaller, editorVersion string, spec *release.ModuleRelease) error {
-	hasEditor, existingModules, err := i.CheckEditorVersion(editorVersion)
+	_, existingModules, err := i.CheckEditorVersion(editorVersion)
 	if err != nil {
 		return err
-	}
-
-	if !hasEditor {
-		return errors.New("editor not installed")
 	}
 
 	targetPath := filepath.Join(i.editorDir, editorVersion)

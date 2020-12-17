@@ -9,9 +9,10 @@ import (
 )
 
 type apply struct {
-	Spec    string   `required arg help:"Spec file to apply"`
-	Modules []string `name:"module" help:"Extra modules to install whilst applying"`
-	Force   bool     `help:"Reinstall Unity"`
+	Spec       string   `required arg help:"Spec file to apply"`
+	Modules    []string `name:"module" help:"Extra modules to install whilst applying"`
+	Force      bool     `help:"Reinstall Unity"`
+	SkipEditor bool     `help:"If true, don't install the editor'"`
 }
 
 func (a *apply) Run(ctx commandContext) error {
@@ -57,5 +58,5 @@ func (a *apply) Run(ctx commandContext) error {
 		}
 	}()
 
-	return installer.EnsureEditorWithModules(CLI.Platform, ctx.installer, pkgInstaller, spec, installModules, a.Force)
+	return installer.EnsureEditorWithModules(CLI.Platform, ctx.installer, pkgInstaller, spec, installModules, a.Force, a.SkipEditor)
 }
