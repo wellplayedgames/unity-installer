@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-var ignoreModuleCommand = map[string]bool {
+var useModuleCommand = map[string]bool {
 	"monodevelop": true,
 	"mono": true,
 	"facebookgameroom": true,
@@ -32,19 +32,20 @@ func editorDataPath(platform, s string) *string {
 }
 
 func moduleCommand(name string, src *archiveModule) *string {
-	if ignoreModuleCommand[name] {
+	if !useModuleCommand[name] && !strings.HasPrefix(name, "visualstudio") {
 		return nil
 	}
 
-	if strings.HasPrefix(name, "visualstudio") {
+	if src.Command == nil {
 		return nil
 	}
 
-	if src.Command != nil && *src.Command != "/S /D={INSTDIR}" {
-		return src.Command
+	cmd := strings.Replace(*src.Command, `"{FILENAME}" `, "", -1)
+	if cmd == "/S /D={INSTDIR}" {
+		return nil
 	}
 
-	return nil
+	return &cmd
 }
 
 func moduleDestination(platform, name, ext string) *string {
