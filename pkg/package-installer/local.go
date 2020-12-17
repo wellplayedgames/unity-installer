@@ -301,10 +301,13 @@ func (i *localInstaller) installExe(packagePath string, destination string, opti
 		args = append(args, "/S")
 
 		if options.Destination != nil {
-			destPath := strings.Replace(*options.Destination, "{UNITY_PATH}", destination, -1)
-			args = append(args, fmt.Sprintf("/D=%s", destPath))
+			args = append(args, fmt.Sprintf("/D=%s", destination))
 		}
 	}
+
+	i.logger.Info("Running executable",
+		"packagePath", packagePath,
+		"args", shellquote.Join(args...))
 
 	if i.dryRun {
 		i.logger.Info("Dry run, install exe",
