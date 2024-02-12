@@ -43,7 +43,9 @@ type Package struct {
 	Version        string `json:"version"`
 	DownloadURL    string `json:"downloadUrl"`
 	DownloadSize   int64  `json:"downloadSize"`
-	InstalledSize  int64  `json:"installedSize"`
+	// This has been removed as it was found to contain floats when installed
+	// from UnityHub which causes it to fail
+	// InstalledSize  int64  `json:"installedSize"`
 }
 
 // ModuleRelease represents an optional Unity module tied to a specific editor
